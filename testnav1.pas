@@ -16,7 +16,7 @@ type
 	end;
 	stackofstring = itemstrptr;
 	arstr = array of array of char;
-procedure writescreen(buffer:arstr;whereisx,whereisy:longint;insrt:boolean); {every single symbol program will rewrite screen with buffer array}
+procedure writescreen(buffer:arstr;whereisx,whereisy,laststring:longint;insrt:boolean); {every single symbol program will rewrite screen with buffer array}
 var
 	i,f:longint;
 begin
@@ -42,31 +42,7 @@ begin
 			end;
 		end;
 	end;
-end;
-procedure SOSInit(var dat:stackofstring);
-begin
-	dat := nil
-end;
-procedure SOCInit(var dat:stackofchar);
-begin
-	dat := nil;
-end;
-procedure foundlaststring(dat:stackofstring;var num:longint);
-begin
-	while dat <> nil do
-	begin
-		dat := dat^.next;
-		num := num + 1
-	end
-end;
-function foundlastchar(dat:stackofchar):longint;
-begin
-	foundlastchar := 0;
-	while dat <> nil do
-	begin
-		foundlastchar := foundlastchar + 1;
-		dat := dat^.next;
-	end
+	gotoXY(whereisx,whereisy)
 end;
 var
 	buffer:array of array of char;
@@ -75,10 +51,8 @@ var
 	x:string;
 	c,g:char;
 	i,ic,v,f:integer;
-	alllines,laststr,countlid,num,countsoc,whereisx,whereisy:longint;
-	insrt,arrow,isq,up:boolean;
-	dat,lastitemdat:stackofstring;
-	whlstr,tmpchar,tmpchar1:stackofchar;
+	alllines,laststr,num,countsoc,whereisx,whereisy,laststring:longint;
+	up,insrt,arrow:boolean;
 begin
 	clrscr;
 	writeln('       _ _   _            _              _ _ _ '); {first enter to the program}
@@ -88,16 +62,13 @@ begin
    	writeln('  \_/ |_|_|  \__\___/_/\_\\__|  \___|\__,_|_|\__\___/|_|  ');
     	writeln;
 	insrt := false; {intializing variables}
-	SOSInit(dat);
-	SOCInit(whlstr);
 	ic := 0;
 	alllines := 1;
 	whereisy := startline;
 	whereisx := 1;
 	countsoc := 1;
-	countlid := 1;
-	setlength(buffer,length(buffer) + 1);
-	setlength(buffer[high(buffer)],length(buffer[high(buffer)]) + 1);
+	setlength(buffer,1);
+	setlength(buffer[0],1);
 	buffer[high(buffer)] [high(buffer[high(buffer)])] := #0;
 	setlength(sizeofalllines,length(sizeofalllines) + 1);
 	up := false;
@@ -105,29 +76,15 @@ begin
 		insrt := false;
 	while true do {main program}
 	begin
-		writescreen(buffer,whereisx,whereisy,insrt); {rewriting screen every iteration}
-		countlid := 1;
-		lastitemdat := dat;
-		if lastitemdat <> nil then
-			while lastitemdat^.next <> nil do
-			begin
-				lastitemdat := lastitemdat^.next;
-				countlid := countlid + 1;
-			end;
+		writescreen(buffer,whereisx,whereisy,laststring,insrt); {rewriting screen every iteration}
 		arrow := false;
 		c := readkey;
-		if (up) and (c <> #0) then
-		begin
-			buffer[high(buffer) - 1] [high(buffer[high(buffer)])] := c;
-			up := false;
-		end;
 		if c = #0 then
 		begin
 			c := readkey;
 			if (c = #72) and (whereisy <> 1) then
 			begin
-				gotoXY(whereisx,whereisy - 1);
-				up := true;
+				whereisy := whereisy - 1;
 			end;
 			if (c = #80) then
 			begin
@@ -143,7 +100,7 @@ begin
 				end
 			end;
 			if (c = #77) then
-				if wherex <> sizeofalllines[wherey-startline] then
+				if whereisx <> sizeofalllines[wherey-startline] then
 				begin	
 					gotoXY(whereisx +1,whereisy);
 					whereisx := whereisx + 1;
@@ -157,31 +114,6 @@ begin
 		
 		if (c ='q') and (not insrt) then
 		begin 
-			isq := true;
-			if dat = nil then
-			begin
-				new(dat);
-				dat^.next := nil;
-				dat^.data := '';
-				lastitemdat := dat;
-			end;
-			if whlstr <> nil then
-			begin 
-				alllines := alllines + 1;
-				tmpchar := whlstr;
-				num := foundlastchar(tmpchar);
-				for i := 1 to num do
-				begin
-					if tmpchar^.data >= #32 then
-						lastitemdat^.data :=tmpchar^.data + lastitemdat^.data;
-					tmpchar := tmpchar^.next;
-				end;
-				new(lastitemdat^.next);
-				lastitemdat := lastitemdat^.next;
-				lastitemdat^.next := nil;
-				lastitemdat^.data := '';
-				whlstr := nil;
-			end;
 			break;
 		end;
 		if (insrt) and (not arrow) then
@@ -189,24 +121,16 @@ begin
 			ic := ic + 1;
 			if (c > #0) and (ic > 1) and (c <> #8) and (c>=#32)then
 			begin
-				new(tmpchar1);
-				tmpchar1^.data := c;
-				tmpchar1^.next := whlstr;
-				whlstr := tmpchar1;
-				setlength(buffer[high(buffer)], length(buffer[high(buffer)]) + 1);
-				buffer[high(buffer)] [high(buffer[high(buffer)])] := c;
-				countsoc := countsoc + 1;
+				setlength(buffer[whereisy-startline], length(buffer[whereisy-startline])+1);
 				whereisx := whereisx + 1;
+				buffer[whereisy - startline] [whereisx-1] := c;
+				countsoc := countsoc + 1;
 			end;
 			if c = #8 then
 			begin
 				if wherex > 1 then
 				begin
-					setlength(buffer[high(buffer)],length(buffer[high(buffer)]) - 1);
-					gotoXY(wherex-1,wherey);
-					if whlstr <> nil then
-						whlstr := whlstr^.next;
-					countsoc := countsoc - 1;
+					setlength(buffer[high(buffer)],length(buffer[high(buffer)]) - 1);							       countsoc := countsoc - 1;
 					whereisx := whereisx - 1;
 				end;
 			end;
@@ -217,34 +141,16 @@ begin
 			end;
 			if c = #13 then
 			begin
-				if dat = nil then
-				begin
-					new(dat);
-					dat^.next := nil;
-					dat^.data := '';
-					lastitemdat := dat;
-				end;
-				setlength(buffer, length(buffer) + 1);
-				gotoXY(1,wherey + 1);
 				alllines := alllines + 1;
-				tmpchar := whlstr;
-				num := foundlastchar(tmpchar);
-				for i := 1 to num do
-				begin
-					if tmpchar^.data >= #32 then
-						lastitemdat^.data :=tmpchar^.data + lastitemdat^.data;
-					tmpchar := tmpchar^.next;
-				end;
-				new(lastitemdat^.next);
-				lastitemdat := lastitemdat^.next;
-				lastitemdat^.next := nil;
-				lastitemdat^.data := '';
-				whlstr := nil;
+				setlength(buffer, alllines);
+				setlength(buffer[alllines-1], 1);
+				whereisy := whereisy + 1;				
 				whereisx := 1;
-				whereisy := whereisy + 1;
-				setlength(sizeofalllines,length(sizeofalllines) + 1);
+				setlength(sizeofalllines,alllines);
 				sizeofalllines[high(sizeofalllines)] := countsoc;
 				countsoc := 0;
+				laststring := laststring + 1;
+				
 			end;
 			if c = #27 then
 			begin

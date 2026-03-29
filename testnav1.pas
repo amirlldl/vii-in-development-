@@ -49,7 +49,7 @@ var
 	sizeofalllines: array of integer;
 	f1:text;
 	x:string;
-	c,g:char;
+	c,g,temp,temp1:char;
 	i,ic,v,f:integer;
 	alllines,laststr,num,countsoc,whereisx,whereisy,laststring:longint;
 	up,insrt,arrow:boolean;
@@ -89,22 +89,18 @@ begin
 			if (c = #80) then
 			begin
 				if whereisy-startline < alllines then
-					gotoXY(whereisx,whereisy+1);
+					whereisy := whereisy + 1;
 			end;
 			if (c = #75) then
 			begin
 				if whereisx > 1 then
-				begin
-					gotoXY(whereisx-1,whereisy);
 					whereisx := whereisx - 1;
-				end
 			end;
 			if (c = #77) then
+			begin
 				if whereisx <> sizeofalllines[wherey-startline] then
-				begin	
-					gotoXY(whereisx +1,whereisy);
 					whereisx := whereisx + 1;
-				end;
+			end;
 			arrow := true;
 		end;
 		if c = 'i' then
@@ -123,15 +119,30 @@ begin
 			begin
 				setlength(buffer[whereisy-startline], length(buffer[whereisy-startline])+1);
 				whereisx := whereisx + 1;
-				buffer[whereisy - startline] [whereisx-1] := c;
+				sizeofalllines[whereisy-startline] := sizeofalllines[whereisy-startline] + 1;
 				countsoc := countsoc + 1;
+				if whereisx-1 <> sizeofalllines[whereisy-startline] then
+				begin
+					temp1 := buffer[whereisy-startline] [whereisx];
+					setlength(buffer[whereisy-startline],length(buffer[whereisy-startline])+1);
+					for i := sizeofalllines[whereisy-startline] downto whereisx do
+					begin
+						buffer[whereisy-startline] [i+1] := buffer[whereisy-startline] [i];
+					end;
+					buffer[whereisy-startline] [whereisx] := temp1
+				end;
+				buffer[whereisy - startline] [whereisx-1] := c;
 			end;
 			if c = #8 then
 			begin
-				if wherex > 1 then
+				if whereisx > 1 then
 				begin
-					setlength(buffer[high(buffer)],length(buffer[high(buffer)]) - 1);							       countsoc := countsoc - 1;
+					temp := buffer[whereisy-startline] [whereisx-1];
+					buffer[whereisy-startline] [high(buffer[whereisy-startline])] := temp;
+					setlength(buffer[whereisy-startline],length(buffer[whereisy-startline]) - 1);
+					countsoc := countsoc - 1;
 					whereisx := whereisx - 1;
+					sizeofalllines[whereisy-startline] := sizeofalllines[whereisy-startline] - 1
 				end;
 			end;
 			if c = #9 then
@@ -146,11 +157,9 @@ begin
 				setlength(buffer[alllines-1], 1);
 				whereisy := whereisy + 1;				
 				whereisx := 1;
-				setlength(sizeofalllines,alllines);
-				sizeofalllines[high(sizeofalllines)] := countsoc;
 				countsoc := 0;
 				laststring := laststring + 1;
-				
+				setlength(sizeofalllines,alllines)
 			end;
 			if c = #27 then
 			begin

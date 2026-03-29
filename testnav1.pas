@@ -70,7 +70,7 @@ begin
 	setlength(buffer,1);
 	setlength(buffer[0],1);
 	buffer[high(buffer)] [high(buffer[high(buffer)])] := #0;
-	setlength(sizeofalllines,length(sizeofalllines) + 1);
+	setlength(sizeofalllines,1);
 	up := false;
 	sizeofalllines[0] := 0;
 		insrt := false;
@@ -84,12 +84,16 @@ begin
 			c := readkey;
 			if (c = #72) and (whereisy <> 1) then
 			begin
+				if (whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1) then
+					whereisx := sizeofalllines[whereisy-startline-1] + 1;
 				whereisy := whereisy - 1;
 			end;
 			if (c = #80) then
 			begin
 				if whereisy-startline < alllines then
 					whereisy := whereisy + 1;
+				if (whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1) then
+					whereisx := sizeofalllines[whereisy-startline-1] + 1;
 			end;
 			if (c = #75) then
 			begin
@@ -98,7 +102,7 @@ begin
 			end;
 			if (c = #77) then
 			begin
-				if whereisx <> sizeofalllines[wherey-startline] then
+				if whereisx <= sizeofalllines[whereisy - startline] then
 					whereisx := whereisx + 1;
 			end;
 			arrow := true;
@@ -118,18 +122,16 @@ begin
 			if (c > #0) and (ic > 1) and (c <> #8) and (c>=#32)then
 			begin
 				setlength(buffer[whereisy-startline], length(buffer[whereisy-startline])+1);
-				whereisx := whereisx + 1;
 				sizeofalllines[whereisy-startline] := sizeofalllines[whereisy-startline] + 1;
+				whereisx := whereisx + 1;
 				countsoc := countsoc + 1;
 				if whereisx-1 <> sizeofalllines[whereisy-startline] then
 				begin
-					temp1 := buffer[whereisy-startline] [whereisx];
 					setlength(buffer[whereisy-startline],length(buffer[whereisy-startline])+1);
-					for i := sizeofalllines[whereisy-startline] downto whereisx do
+					for i := sizeofalllines[whereisy-startline] downto whereisx-1 do
 					begin
 						buffer[whereisy-startline] [i+1] := buffer[whereisy-startline] [i];
 					end;
-					buffer[whereisy-startline] [whereisx] := temp1
 				end;
 				buffer[whereisy - startline] [whereisx-1] := c;
 			end;
@@ -137,8 +139,11 @@ begin
 			begin
 				if whereisx > 1 then
 				begin
-					temp := buffer[whereisy-startline] [whereisx-1];
-					buffer[whereisy-startline] [high(buffer[whereisy-startline])] := temp;
+					if whereisx-1 < sizeofalllines[whereisy - startline] then
+					begin
+						for i := whereisx-1 to sizeofalllines[whereisy-startline]-1 do
+							buffer[whereisy-startline] [i] := buffer[whereisy-startline] [i+1]
+					end;
 					setlength(buffer[whereisy-startline],length(buffer[whereisy-startline]) - 1);
 					countsoc := countsoc - 1;
 					whereisx := whereisx - 1;
@@ -152,6 +157,16 @@ begin
 			end;
 			if c = #13 then
 			begin
+
+				setlength(sizeofalllines,alllines);
+				if whereisy-startline < alllines then
+				begin
+					setlength(sizeofalllines,length(sizeofalllines) + 1);
+					for i := whereisy-startline downto alllines do
+					begin
+						sizeofalllines[i+1] := sizeofalllines[i]
+					end;
+				end;
 				alllines := alllines + 1;
 				setlength(buffer, alllines);
 				setlength(buffer[alllines-1], 1);
@@ -159,7 +174,6 @@ begin
 				whereisx := 1;
 				countsoc := 0;
 				laststring := laststring + 1;
-				setlength(sizeofalllines,alllines)
 			end;
 			if c = #27 then
 			begin

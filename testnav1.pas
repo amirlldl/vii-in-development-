@@ -1,24 +1,27 @@
 program navigate;
-uses crt;
+uses crt,sysutils;
 const
 	startline = 7;
+	rst = #27'[0m';
+	red1 = #27'[31m';
+	grn = #27'[32m';
+	ylw = #27'[33m';
+	blu = #27'[34m';
+	mag = #27'[35m';
+	cyn = #27'[36m';
+	wht = #27'[37m';
+	keyword_count = 11;
 type
-	itemchrptr = ^itemchr;
-	itemchr = record
-		data:char;
-		next:itemchrptr;
+	KeyWord = record
+		wrd:string;
+		color:string;
+		len:integer;
 	end;
-	stackofchar = itemchrptr;
-	itemstrptr = ^itemstr;
-	itemstr = record
-		data:string;
-		next:itemstrptr;
-	end;
-	stackofstring = itemstrptr;
 	arstr = array of array of char;
-procedure writescreen(buffer:arstr;whereisx,whereisy,laststring:longint;insrt:boolean); {every single symbol program will rewrite screen with buffer array}
+procedure writescreen(buffer:arstr;whereisx,whereisy,laststring:longint;insrt,syntaxhighlight:boolean;keywords:array of keyword); {every single symbol program will rewrite screen with buffer array}
 var
-	i,f:longint;
+	i,f,p,v:longint;
+	tmp:string;
 begin
 	clrscr;
 	writeln('       _ _   _            _              _ _ _ ');
@@ -31,28 +34,68 @@ begin
 	if not insrt then
 		writeln('--COMMAND--');
     	writeln;
-	for i := 0 to high(buffer) do
+	if syntaxhighlight then
+	begin
+		for i := 0 to high(buffer) do
 	begin
 		gotoXY(1,i+startline);
-		for f := 0 to high(buffer[i]) do
-		begin
-			if buffer[i][f] <> #0 then
+		for v := 0 to  high(buffer[i]) do
+			tmp := tmp + buffer[i] [v];
+		if syntaxhighlight then
+		begin	
+			for v := 1 to keyword_count do
 			begin
-				write(buffer[i][f])
+				p := pos(keywords[v].wrd,tmp);
+				if p > 0 then
+					tmp := keywords[v].color + tmp + RST
 			end;
 		end;
+		if syntaxhighlight then
+    		begin
+        		for v := 0 to high(keywords) do 
+			begin
+            		tmp := StringReplace(tmp, keywords[v].wrd, keywords[v].color + keywords[v].wrd + RST, [rfReplaceAll]);
+        	end;
+		write(tmp);
 	end;
-	gotoXY(whereisx,whereisy)
+		tmp := '';
+		write(RST);
+	end;
+	end;
+	if not syntaxhighlight then
+	begin
+		for i := 0 to high(buffer) do
+		begin
+			gotoXY(1,i+startline);
+			for f := 0 to high(buffer[i]) do
+				write(buffer[i] [f])
+		end;
+	end;
+	gotoXY(whereisx+1,whereisy)	
 end;
 var
 	buffer:array of array of char;
 	sizeofalllines: array of integer;
-	f1:text;
+	f1,config:text;
 	x:string;
 	c,g,temp,temp1:char;
-	i,ic,v,f:integer;
+	i,ic,v,f,p:integer;
 	alllines,laststr,num,countsoc,whereisx,whereisy,laststring:longint;
-	up,insrt,arrow:boolean;
+	up,insrt,arrow,syntaxhighlight,cursorjump,autoident:boolean;
+	keywords:array [1..keyword_count] of keyword = (
+		(wrd: 'begin';color: ylw;len:5),
+		(wrd: 'end';color:ylw;len:3),
+		(wrd: 'if';color:ylw;len:2),
+		(wrd: 'then';color:ylw;len:4),
+		(wrd: 'for';color:ylw;len:3),
+		(wrd: 'do';color:ylw;len:2),
+		(wrd: 'integer';color:cyn;len:7),
+		(wrd: 'boolean';color:cyn;len:7),
+		(wrd: 'procedure';color:ylw;len:9),
+		(wrd: 'program';color:ylw;len:7),
+		(wrd: 'writeln';color:cyn;len:7)
+	);
+
 begin
 	clrscr;
 	writeln('       _ _   _            _              _ _ _ '); {first enter to the program}
@@ -63,6 +106,46 @@ begin
     	writeln;
 	insrt := false; {intializing variables}
 	ic := 0;
+	cursorjump := false;
+	syntaxhighlight := false;
+	cursorjump := false;
+	if FileExists('config/vii.conf') then
+	begin
+		assign(config,'config/vii.conf');
+		reset(config);
+		while not eof(config) do
+		begin
+			readln(config,x);
+			p := pos('auto-ident',x);
+			if p > 0 then
+			begin
+				p := pos('true',x);
+				if p > 0 then
+				begin
+					autoident := true;
+				end;
+			end;
+			p := pos('syntax-highlighting',x);
+			if p > 0 then
+			begin
+				p := pos('true',x);
+				if p > 0 then
+				begin
+					syntaxhighlight := true;
+				end;
+			end;
+			p := pos('automatic_cursor_jumping',x);
+			if p > 0 then
+			begin
+				p := pos('true',x);
+				if p>0 then
+				begin
+					cursorjump := true
+				end;
+			end
+		end;
+		close(config);
+	end;
 	alllines := 1;
 	whereisy := startline;
 	whereisx := 1;
@@ -76,7 +159,7 @@ begin
 		insrt := false;
 	while true do {main program}
 	begin
-		writescreen(buffer,whereisx,whereisy,laststring,insrt); {rewriting screen every iteration}
+		writescreen(buffer,whereisx,whereisy,laststring,insrt,syntaxhighlight,keywords); {rewriting screen every iteration}
 		arrow := false;
 		c := readkey;
 		if c = #0 then
@@ -84,7 +167,7 @@ begin
 			c := readkey;
 			if (c = #72) and (whereisy <> 1) then
 			begin
-				if (whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1) then
+				if ((whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1)) and (cursorjump) then
 					whereisx := sizeofalllines[whereisy-startline-1] + 1;
 				whereisy := whereisy - 1;
 			end;
@@ -92,7 +175,7 @@ begin
 			begin
 				if whereisy-startline < alllines then
 					whereisy := whereisy + 1;
-				if (whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1) then
+				if ((whereisx > sizeofalllines[whereisy-startline-1]) or (whereisx = sizeofalllines[whereisy-startline]+1)) and (cursorjump) then
 					whereisx := sizeofalllines[whereisy-startline-1] + 1;
 			end;
 			if (c = #75) then
@@ -153,7 +236,7 @@ begin
 			if c = #9 then
 			begin
 				setlength(buffer[high(buffer)], length(buffer[high(buffer)]) + 1);
-				buffer[high(buffer)] [high(buffer[high(buffer)])] := #9
+				buffer[whereisy-startline] [whereisx-1]:= #9
 			end;
 			if c = #13 then
 			begin
